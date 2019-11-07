@@ -10,9 +10,6 @@ import time
 import json
 
 
-NAME = 'my name here'
-EMAIL = 'my.email@address.com'
-
 def filter_builder(fdict):
     """Builds the whole filter from items in a filter dictionary"""
     filter_text = ' '.join([section_builder(x) for x in fdict['data']])
@@ -60,7 +57,7 @@ def entry_builder(gmail_filters):
             'extras': '\n\t{}'.format('\n\t'.join(extras)) if len(extras) > 0 else ''
         })
         for built_filter in built_filters:
-            fids.append(time.time_ns())
+            fids.append(int(time.time() * 10000000))
             fdict['built_filter'] = '({})'.format(built_filter)
             # Build the XML for the entry
             xml_str += '{}\n'.format(xml_entry_base.format(**fdict))
@@ -110,15 +107,12 @@ xml_base = """<?xml version='1.0' encoding='UTF-8'?>
     <id>
         tag:mail.google.com,2008:filters:{{filter_ids}}
     </id>
-    <updated>2019-10-27T24:02:22Z</updated>
-    <author>
-        <name>{}</name>
-        <email>{}</email>
-    </author>{{entries}}
+    <updated>2019-10-27T24:02:22Z</updated>{{entries}}
 </feed>
-""".format(NAME, EMAIL)
+"""
 
-xml_entry_base = """<entry>
+xml_entry_base = """
+<entry>
     <category term='filter'></category>
     <title>Mail Filter</title>
     <id>tag:mail.google.com,2008:filter:{created}</id>
