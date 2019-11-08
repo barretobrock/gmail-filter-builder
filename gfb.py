@@ -59,6 +59,7 @@ def entry_builder(gmail_filters):
         for built_filter in built_filters:
             fids.append(int(time.time() * 10000000))
             fdict['built_filter'] = '({})'.format(built_filter)
+            fdict['built_filter'] = '({})'.format(built_filter.replace("'", "&apos;"))
             # Build the XML for the entry
             xml_str += '{}\n'.format(xml_entry_base.format(**fdict))
 
@@ -105,14 +106,13 @@ xml_base = """<?xml version='1.0' encoding='UTF-8'?>
 <feed xmlns="http://www.w3.org/2005/Atom" xmlns:apps="http://schemas.google.com/apps/2006">
     <title>Mail Filters</title>
     <id>
-        tag:mail.google.com,2008:filters:{{filter_ids}}
+        tag:mail.google.com,2008:filters:{filter_ids}
     </id>
-    <updated>2019-10-27T24:02:22Z</updated>{{entries}}
+    <updated>2019-10-27T24:02:22Z</updated>{entries}
 </feed>
 """
 
-xml_entry_base = """
-<entry>
+xml_entry_base = """<entry>
     <category term='filter'></category>
     <title>Mail Filter</title>
     <id>tag:mail.google.com,2008:filter:{created}</id>
