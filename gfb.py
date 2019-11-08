@@ -97,7 +97,7 @@ def section_builder(section):
             chunk = '({})'.format(' {} '.format(join_part).join(['{0}{1}{0}'.format('&quot;', x) for x in v]))
 
         if not_part is not None:
-            chunk = 'NOT{}'.format(chunk)
+            chunk = 'NOT {}'.format(chunk)
         section_text += chunk
 
     return section_text
