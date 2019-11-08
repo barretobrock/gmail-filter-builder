@@ -7,12 +7,12 @@ import os
 import re
 import sys
 import time
-import json
+import yaml
 
 
 def filter_builder(fdict):
     """Builds the whole filter from items in a filter dictionary"""
-    filter_text = ' '.join([section_builder(x) for x in fdict['data']])
+    filter_text = ''.join([section_builder(x) for x in fdict['data']])
     if len(filter_text) > 600:
         # Cut the filter text down some by splitting some sections into separate filters
         print('Filter exceeds bounds. Splitting')
@@ -58,7 +58,6 @@ def entry_builder(gmail_filters):
         })
         for built_filter in built_filters:
             fids.append(int(time.time() * 10000000))
-            fdict['built_filter'] = '({})'.format(built_filter)
             fdict['built_filter'] = '({})'.format(built_filter.replace("'", "&apos;"))
             # Build the XML for the entry
             xml_str += '{}\n'.format(xml_entry_base.format(**fdict))
@@ -75,18 +74,20 @@ def section_builder(section):
     # Begin constructing the section from a dictionary
     section_text = ''
     for k, v in section.items():
-        if '-' not in k:
-            raise ValueError('Key item in "data" section has invalid syntax: {}'.format(k))
         not_part = key_part = join_part = None
-        # Item follows the {order}-{join}-{key}[-not] syntax
+        # Item follows the {join}-{key}[-not] syntax
         item_split = k.split('-')
-        if len(item_split) == 4:
-            _, join_part, key_part, not_part = item_split
-        elif len(item_split) == 3:
-            _, join_part, key_part = item_split
+        if len(item_split) == 3:
+            join_part, key_part, not_part = item_split
         elif len(item_split) == 2:
-            _, join_part = item_split
+            join_part, key_part = item_split
+        elif len(item_split) == 1:
+            join_part = item_split[0]
         join_part = join_part.upper()
+
+        if isinstance(v, str) and key_part is not None:
+            # Convert str object to list. Only joins will be allowed as str
+            v = [v]
 
         if key_part is None:
             chunk = ' {} '.format(v.upper())
@@ -96,7 +97,7 @@ def section_builder(section):
             chunk = '({})'.format(' {} '.format(join_part).join(['{0}{1}{0}'.format('&quot;', x) for x in v]))
 
         if not_part is not None:
-            chunk = 'NOT({})'.format(chunk)
+            chunk = 'NOT{}'.format(chunk)
         section_text += chunk
 
     return section_text
@@ -131,8 +132,8 @@ if not os.path.exists(inpath):
 if not os.path.isfile(inpath):
     raise ValueError('File does not exist: {}'.format(inpath))
 
-if not os.path.splitext(inpath)[1] == '.json':
-    raise ValueError('File must end with \'.json\': {}'.format(inpath))
+if not os.path.splitext(inpath)[1] == '.yaml':
+    raise ValueError('File must end with \'.yaml\': {}'.format(inpath))
 
 # Get the directory of the file we're reading in
 docs_dir = os.path.dirname(inpath)
@@ -141,8 +142,7 @@ outpath = os.path.join(docs_dir, 'mailFilters.xml')
 
 # Read in the JSON file
 with open(inpath, 'r') as f:
-    gmail_filters = json.loads(f.read())
-
+    gmail_filters = yaml.load(f)
 
 fid_list, entry_str = entry_builder(gmail_filters)
 
