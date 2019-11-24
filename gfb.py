@@ -66,11 +66,26 @@ def entry_builder(gmail_filters):
 
 
 def section_builder(section):
-    """Builds text for the specific section of the filter"""
+    """Builds text for the specific section of the filter
+    :param section:
+    """
+
+    def chunk_handler(values, key_part=None, join_part=None, not_part=None):
+        """Handles a specific part of the data section"""
+        if key_part is None:
+            chunk = ' {} '.format(values.upper())
+        elif key_part in ('from', 'cc', 'bcc', 'to', 'subject'):
+            chunk = '{}:({})'.format(key_part, ' {} '.format(join_part).join(values))
+        else:
+            chunk = '({})'.format(' {} '.format(join_part).join(['{0}{1}{0}'.format('&quot;', x) for x in values]))
+
+        if not_part is not None:
+            chunk = 'NOT {}'.format(chunk)
+        return chunk
+
     if isinstance(section, str):
         # Section is likely a joiner if it's just string (e.g., 'and', 'or')
         return section
-
     # Begin constructing the section from a dictionary
     section_text = ''
     for k, v in section.items():
@@ -83,22 +98,18 @@ def section_builder(section):
             join_part, key_part = item_split
         elif len(item_split) == 1:
             join_part = item_split[0]
+
         join_part = join_part.upper()
 
         if isinstance(v, str) and key_part is not None:
             # Convert str object to list. Only joins will be allowed as str
             v = [v]
+        elif isinstance(v, list) and isinstance(v[0], dict):
+            # Probably a nested dict (i.e., using the 'group' tag
+            # We'll use a pipe so we can split this later from the other data into its own section
+            return ' OR ({})'.format(''.join([section_builder(x) for x in v]))
 
-        if key_part is None:
-            chunk = ' {} '.format(v.upper())
-        elif key_part in ('from', 'cc', 'bcc', 'to', 'subject'):
-            chunk = '{}:({})'.format(key_part, ' {} '.format(join_part).join(v))
-        else:
-            chunk = '({})'.format(' {} '.format(join_part).join(['{0}{1}{0}'.format('&quot;', x) for x in v]))
-
-        if not_part is not None:
-            chunk = 'NOT {}'.format(chunk)
-        section_text += chunk
+        section_text += chunk_handler(v, key_part, join_part, not_part)
 
     return section_text
 
