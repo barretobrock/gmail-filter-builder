@@ -74,7 +74,7 @@ def section_builder(section):
         """Handles a specific part of the data section"""
         if key_part is None:
             chunk = ' {} '.format(values.upper())
-        elif key_part in ('from', 'cc', 'bcc', 'to', 'subject'):
+        elif key_part in ('from', 'cc', 'bcc', 'to'):
             chunk = '{}:({})'.format(key_part, ' {} '.format(join_part).join(values))
         else:
             chunk = '({})'.format(' {} '.format(join_part).join(['{0}{1}{0}'.format('&quot;', x) for x in values]))
