@@ -78,7 +78,8 @@ def section_builder(section):
             chunk = '{}:({})'.format(key_part, ' {} '.format(join_part).join(values))
         elif key_part in ('subject', ):
             # Format quotes between values
-            vals_part = ' {} '.format(join_part).join(['{0}{1}{0}'.format('&quot;', x) for x in values])
+            val_list = ['{0}{1}{0}'.format('&quot;', x) if '*' not in x else x for x in values]
+            vals_part = ' {} '.format(join_part).join(val_list)
             chunk = '{}:({})'.format(key_part, vals_part)
         else:
             # Handles text area
