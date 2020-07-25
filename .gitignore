@@ -1,3 +1,7 @@
+# Keep the creds folder but don't commit any of the creds
+creds/*
+!creds/.gitkeep
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
