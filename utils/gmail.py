@@ -9,7 +9,10 @@ from google.auth.transport.requests import Request
 class GMailAPI:
     """Methods for establishing and building a store of credentials for
     connecting to the GMail API"""
-    SCOPES = ['https://www.googleapis.com/auth/gmail.settings.basic']
+    SCOPES = [
+        'https://www.googleapis.com/auth/gmail.labels',  # Write labels
+        'https://www.googleapis.com/auth/gmail.settings.basic'  # Read/write filters, read labels
+    ]
     DEFAULT_GMAIL_CREDS = os.path.join('creds', 'gmail-credentials.json')
     DEFAULT_PICKLE_PATH = os.path.join('creds', 'token.pickle')
 
@@ -61,7 +64,9 @@ class GMailAPI:
 
 class GMailLabelAPI(GMailAPI):
     """Label methods
-    Docs: http://googleapis.github.io/google-api-python-client/docs/dyn/gmail_v1.users.labels.html
+    Docs:
+        http://googleapis.github.io/google-api-python-client/docs/dyn/gmail_v1.users.labels.html
+        https://developers.google.com/gmail/api/v1/reference/users/labels/create
     """
     def __init__(self):
         super().__init__()
@@ -95,7 +100,9 @@ class GMailLabelAPI(GMailAPI):
         """Creates a new label"""
         new_label = {
             'type': 'user',
-            'name': label_name
+            'name': label_name,
+            'labelListVisibility': 'labelShowIfUnread',
+            'messageListVisibility': 'show'
         }
 
         resp = self.label_actions.create(userId='me', body=new_label).execute()
@@ -141,7 +148,10 @@ class Action:
                 action_dict[k] = v
             if k == 'addLabelIds' and label_id is not None:
                 # Add the label we'll assign to the filter
-                action_dict[k].append(label_id)
+                if 'addLabelIds' in action_dict.keys():
+                    action_dict[k].append(label_id)
+                else:
+                    action_dict[k] = [label_id]
 
         return action_dict
 
@@ -181,7 +191,10 @@ class Action:
 class GMailFilterAPI(GMailAPI):
     """Filter methods
 
-    Docs: http://googleapis.github.io/google-api-python-client/docs/dyn/gmail_v1.users.settings.filters.html
+    Docs:
+        http://googleapis.github.io/google-api-python-client/docs/dyn/gmail_v1.users.settings.filters.html
+        https://developers.google.com/gmail/api/v1/reference/users/settings/filters/create
+
     """
     def __init__(self):
         super().__init__()

@@ -24,8 +24,8 @@ label_id_list = [x['id'] for x in all_labels]
 all_filters = filter_svc.list_filters()
 
 # Remove all the old filters
-for f in all_filters:
-    filter_svc.delete_filter(f['id'])
+# for f in all_filters:
+#     filter_svc.delete_filter(f['id'])
 
 # Create new filters
 for label_name, data in gmail_filters.items():
