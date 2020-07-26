@@ -10,7 +10,7 @@ from utils.yaml_organizer import YamlWrapper
 
 # Read in the YAML file
 # Debug points to the example yaml file in this repo
-gmail_filters = YamlWrapper(debug=True).gmail_filters
+gmail_filters = YamlWrapper().gmail_filters
 # Load tools & API services
 filter_tools = GMailFilter()
 label_svc = GMailLabelAPI()
