@@ -1,7 +1,13 @@
 # Gmail Filter Builder
-Communicates with the GMail API to:
-    - create mail labels (if needed)
-    - create & delete mail filters (if needed)
+Builds a filter in GMail via a YAML file organized by desired labels, filters for these labels and what actions to perform on emails matching these filters.
+
+Two options to use GFB:
+ 1. GMail API:
+    Pros: Less involved (everything is automated)
+    Cons: GMail API authentication required - if your GMail is managed by another entity, this may not be possible.
+ 2. XML file generation:
+    Pros: More control, more flexibility in application, can be used with any GMail account (i.e., managed or personal)
+    Cons: More manual (removal of old filters, upload of new) 
 
 A previous version of this script built a simple XML file to manually upload in the "Import Filters" section of the [GMail filter settings page](https://mail.google.com/mail/u/0/#settings/filters). In future iterations, this functionality will be brought back as a fall-back.
 
@@ -13,8 +19,12 @@ To install, make sure you have all the package requirements installed. You can i
 ```bash
 pip3 install -r requirements.txt
 ```  
+From this point, you'll have two options regarding how you'd like to use GFB
 
-## Authentication
+## Option 1: GFB with GMail API
+This section covers the unique steps needed to set up using GFB leveraging the GMail API
+
+### Authentication (required only for GMail API)
  1. Follow step 1 on [this page](https://developers.google.com/gmail/api/quickstart/python) to enable the GMail API for your account
  2. Rename the `credentials.json` file you just made and put it in the `creds` folder in this repo.
  3. Run the `auth.py` script. This will attempt a connection to the GMail API and subsequently try to pull a list of all the labels and filters under the account.
@@ -25,9 +35,17 @@ pip3 install -r requirements.txt
  4. If the script above ran without error, you're good to go and a pickle file has been created in the `creds` folder to indicate that the credentials have been successfully authenticated. 
     _NOTE: Should you ever decide to change the scope in `gmail.py`, you'll need to delete the `token.pickle` file and re-run auth to regenerate the pickle file._
 
-## Example Use 
+### Example Use 
 ```bash
-python3 gfb.py ~/path/to/my/yaml_file.yaml
+python3 gfb_api_method.py ~/path/to/my/yaml_file.yaml
+```
+
+## Option 2: GFB with XML generation
+This section covers the unique steps needed to run GFB using only the XML building aspect
+
+### Example Use
+```bash
+python3 gfb_xml_method.py ~/path/to/my/yaml_file.yaml
 ```
 
 ## Example YAML Structure
