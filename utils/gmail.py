@@ -113,9 +113,14 @@ class GMailLabelAPI(GMailAPI):
 
 class Action:
     """GMail Actions"""
-    def __init__(self, action_list: List[str]):
+    def __init__(self, action_list: List[str], as_xml: bool = False):
+        self.as_xml = as_xml
+        # When using Gmail API (as_xml = False)
         self.add_actions = []
         self.remove_actions = []
+        # When building an XML (as_xml = True)
+        self.xml_actions = []
+
         self.action_map = {
             'archive': self.action_archive,
             'mark-read': self.action_mark_read,
@@ -131,16 +136,18 @@ class Action:
     def _process_actions(self, action_list: List[str]):
         """Move through the list of actions and build out the final action lists"""
         for action in action_list:
-            if 'add-label:' in action:
-                # Parse the label id from the add-label prefix
-                _, label_id = action.split(':')
-                self.action_add_label(label_id)
-            else:
-                # Call the action, which will add to the respective lists
-                self.action_map[action]()
+            # Call the action, which will add to the respective lists
+            self.action_map[action]()
 
-    def build_action_dict(self, label_id: str = None) -> Dict[str, List[str]]:
-        """Takes the action lists and compiles them into a dictionary to create a filter"""
+    def build_actions(self, label_id: str = None) -> Union[Dict[str, List[str]], List[str]]:
+        """Takes the action lists and compiles them into a dictionary to create a filter
+        If label id included, will append to list as well
+        """
+        if self.as_xml:
+            # Returns a list of the actions in XML parlance to be placed into their property tags
+            return self.xml_actions
+
+        # For the API, we'll make a dictionary instead
         action_dict = {}
         for k, v in zip(['removeLabelIds', 'addLabelIds'], [self.remove_actions, self.add_actions]):
             if len(v) > 0:
@@ -157,35 +164,52 @@ class Action:
 
     def action_archive(self):
         """Archive the email (skip inbox)"""
-        self.remove_actions.append('INBOX')
+        if self.as_xml:
+            self.xml_actions.append('shouldArchive')
+        else:
+            self.remove_actions.append('INBOX')
 
     def action_mark_read(self):
         """Mark email as unread"""
-        self.remove_actions.append('UNREAD')
+        if self.as_xml:
+            self.xml_actions.append('shouldMarkAsRead')
+        else:
+            self.remove_actions.append('UNREAD')
 
     def action_never_spam(self):
         """Never mark as spam"""
-        self.remove_actions.append('SPAM')
+        if self.as_xml:
+            self.xml_actions.append('shouldNeverSpam')
+        else:
+            self.remove_actions.append('SPAM')
 
     def action_never_important(self):
         """Never mark as important"""
-        self.remove_actions.append('IMPORTANT')
+        if self.as_xml:
+            self.xml_actions.append('shouldNeverMarkAsImportant')
+        else:
+            self.remove_actions.append('IMPORTANT')
 
     def action_always_important(self):
         """Always mark as important"""
-        self.add_actions.append('IMPORTANT')
+        if self.as_xml:
+            self.xml_actions.append('shouldAlwaysMarkAsImportant')
+        else:
+            self.add_actions.append('IMPORTANT')
 
     def action_delete_email(self):
         """Move the email to trash"""
-        self.add_actions.append('TRASH')
+        if self.as_xml:
+            self.xml_actions.append('shouldDelete')
+        else:
+            self.add_actions.append('TRASH')
 
     def action_mark_starred(self):
         """Mark email as starred"""
-        self.add_actions.append('STARRED')
-
-    def action_add_label(self, label_id: str):
-        """Tag with user-defined email"""
-        self.add_actions.append(label_id)
+        if self.as_xml:
+            self.xml_actions.append('shouldStar')
+        else:
+            self.add_actions.append('STARRED')
 
 
 class GMailFilterAPI(GMailAPI):
