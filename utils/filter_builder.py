@@ -2,6 +2,107 @@ import re
 from typing import Dict, Union, List
 
 
+class Action:
+    """GMail Actions"""
+    def __init__(self, action_list: List[str], as_xml: bool = False):
+        self.as_xml = as_xml
+        # When using Gmail API (as_xml = False)
+        self.add_actions = []
+        self.remove_actions = []
+        # When building an XML (as_xml = True)
+        self.xml_actions = []
+
+        self.action_map = {
+            'archive': self.action_archive,
+            'mark-read': self.action_mark_read,
+            'never-spam': self.action_never_spam,
+            'never-important': self.action_never_important,
+            'always-important': self.action_always_important,
+            'delete-email': self.action_delete_email,
+            'mark-starred': self.action_mark_starred
+        }
+        # Build out the action lists
+        self._process_actions(action_list)
+
+    def _process_actions(self, action_list: List[str]):
+        """Move through the list of actions and build out the final action lists"""
+        for action in action_list:
+            # Call the action, which will add to the respective lists
+            self.action_map[action]()
+
+    def build_actions(self, label_id: str = None) -> Union[Dict[str, List[str]], List[str]]:
+        """Takes the action lists and compiles them into a dictionary to create a filter
+        If label id included, will append to list as well
+        """
+        if self.as_xml:
+            # Returns a list of the actions in XML parlance to be placed into their property tags
+            return self.xml_actions
+
+        # For the API, we'll make a dictionary instead
+        action_dict = {}
+        for k, v in zip(['removeLabelIds', 'addLabelIds'], [self.remove_actions, self.add_actions]):
+            if len(v) > 0:
+                # Add to final action dict
+                action_dict[k] = v
+            if k == 'addLabelIds' and label_id is not None:
+                # Add the label we'll assign to the filter
+                if 'addLabelIds' in action_dict.keys():
+                    action_dict[k].append(label_id)
+                else:
+                    action_dict[k] = [label_id]
+
+        return action_dict
+
+    def action_archive(self):
+        """Archive the email (skip inbox)"""
+        if self.as_xml:
+            self.xml_actions.append('shouldArchive')
+        else:
+            self.remove_actions.append('INBOX')
+
+    def action_mark_read(self):
+        """Mark email as unread"""
+        if self.as_xml:
+            self.xml_actions.append('shouldMarkAsRead')
+        else:
+            self.remove_actions.append('UNREAD')
+
+    def action_never_spam(self):
+        """Never mark as spam"""
+        if self.as_xml:
+            self.xml_actions.append('shouldNeverSpam')
+        else:
+            self.remove_actions.append('SPAM')
+
+    def action_never_important(self):
+        """Never mark as important"""
+        if self.as_xml:
+            self.xml_actions.append('shouldNeverMarkAsImportant')
+        else:
+            self.remove_actions.append('IMPORTANT')
+
+    def action_always_important(self):
+        """Always mark as important"""
+        if self.as_xml:
+            self.xml_actions.append('shouldAlwaysMarkAsImportant')
+        else:
+            self.add_actions.append('IMPORTANT')
+
+    def action_delete_email(self):
+        """Move the email to trash"""
+        if self.as_xml:
+            self.xml_actions.append('shouldDelete')
+        else:
+            self.add_actions.append('TRASH')
+
+    def action_mark_starred(self):
+        """Mark email as starred"""
+        if self.as_xml:
+            self.xml_actions.append('shouldStar')
+        else:
+            self.add_actions.append('STARRED')
+
+
 class GMailFilter:
     """Class for building a single GMail filter"""
 
@@ -95,9 +196,14 @@ class GMailFilter:
         else:
             return [filter_text]
 
-    @staticmethod
-    def action_assembler(fdict: Dict[str, Union[str, List[str]]]) -> List[str]:
+    def action_assembler(self, fdict: Dict[str, Union[str, List[str]]],
+                         label_id: str = None) -> Union[Dict[str, List[str]], List[str]]:
         """Processes the actions (e.g., 'never-important', 'archive', etc.)"""
         if 'actions' not in fdict.keys():
             return []
-        return fdict['actions']
+
+        action_obj = Action(fdict['actions'], as_xml=self.as_xml)
+        if self.as_xml:
+            return action_obj.xml_actions
+        else:
+            return action_obj.build_actions(label_id)

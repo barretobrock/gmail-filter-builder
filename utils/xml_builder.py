@@ -83,4 +83,3 @@ class XMLBuilder:
         """Saves the xml file to dedicated filepath"""
         with open(self.output_path, 'w') as f:
             f.write(xml)
-

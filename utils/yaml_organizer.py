@@ -11,7 +11,7 @@ import yaml
 
 
 class YamlPath:
-    DEFAULT_PATH = 'example_gmail_filters.yaml'
+    DEFAULT_PATH = 'gmail_filters.yaml'
 
     def __init__(self, debug: bool = False):
         self.yaml_path = self.DEFAULT_PATH if debug else sys.argv[1]
@@ -46,7 +46,7 @@ class YamlWrapper:
         with open(self.new_yaml_path, 'w') as f:
             f.write(yaml.dump(self.gmail_filters, allow_unicode=True))
 
-    def email_sort_and_save(self):
+    def sort_and_save(self):
         """Sorts emails listed by domain or, when lacking an obvious domain,
         the first word in the string. Saves to the new file when complete."""
 
@@ -58,7 +58,7 @@ class YamlWrapper:
                         if any([x in k for x in ['from', 'to', 'bcc', 'cc']]):
                             # Working with emails. let's sort them as best we can by domain
                             # First, we'll make a 'cleaned' list
-                            cleaner = re.compile(r'[^\w\.\@]', re.I)
+                            cleaner = re.compile(r'[^\w.@]', re.I)
                             cleaned = [re.findall(r'[\w]+', cleaner.sub('', x)) for x in v]
                             sortable = [x[-2] if len(x) > 1 else x[0] for x in cleaned]
                             # We'll then bind the two lists together and sort by the cleaned items
