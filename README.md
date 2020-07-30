@@ -47,6 +47,14 @@ This section covers the unique steps needed to run GFB using only the XML buildi
 ```bash
 python3 gfb_xml_method.py ~/path/to/my/yaml_file.yaml
 ```
+### Updating process 
+ 1. Run the gfb_xml_method.py script above
+ 2. Retrieve the new XML file (by default saves to ~/Documents/gmail_filters.xml)
+ 3. Go to [GMail Filter Settings Page]()
+ 4. Select via checkbox any already-existing filters that will be replaced by the new filters (Select All at the bottom left if needed). Remove by clicking `Delete` at the bottom.
+ 5. Underneath that section, click the `Import filters` link. `Choose file` and then select the XML file.
+ 6. Click `Open file`, make sure the check selections are appropriate before proceeding
+ 7. Optionally check the `Apply new filters to existing email` box and then click `Create filters` 
 
 ## Example YAML Structure
 ```yaml
