@@ -1,0 +1,26 @@
+Reading:
+    data:
+        - or-from: ['*.aeon.co', '*@nautil.us', '*.wired.com']
+    actions: [archive, never-important]
+Entertainment:
+    data:
+        - or-from: ['*spotify.com', noreply@youtube.com]
+    actions: [archive, never-important]
+Language Study/German:
+    data:
+        - or-from: ['*feedblitz*', '*transparent.com']
+        - {join: and}
+        - or-text: [German Language Blog, in German]
+    actions: [archive, never-important]
+Language Study/Polish:
+    data:
+        - or-from: ['*feedblitz*', '*transparent.com']
+        - {join: and}
+        - or-text: [Polish Language Blog, in Polish]
+    actions: [archive, never-important]
+Language Study/Russian:
+    data:
+        - or-from: ['*feedblitz*', '*transparent.com']
+        - {join: and}
+        - or-text: [Russian Language Blog, in Russian]
+    actions: [archive, never-important]

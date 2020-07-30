@@ -10,6 +10,8 @@ from utils.yaml_organizer import YamlWrapper
 
 # Read in the YAML file
 # Debug points to the example yaml file in this repo
+#   When True: points to the example yaml file in this repo.
+#   When False (default): takes in 1st argument in script run (i.e., sys.argv[1])
 gmail_filters = YamlWrapper().gmail_filters
 # Load tools & API services
 filter_tools = GMailFilter()
@@ -39,7 +41,6 @@ for label_name, data in gmail_filters.items():
     label_id = label['id']
     # Process the processed YAML file into a list of gmail queries and list of actions
     queries = filter_tools.query_organizer(data)
-    actions = filter_tools.action_assembler(data)
+    actions = filter_tools.action_assembler(data, label_id)
     for query in queries:
-        filter_svc.create_filter(query=query, action_list=actions, label_id=label_id)
-
+        filter_svc.create_filter(query=query, actions_dict=actions)
