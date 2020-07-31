@@ -12,7 +12,7 @@ from utils.xml_builder import XMLBuilder
 # Debug
 #   When True: points to the example yaml file in this repo.
 #   When False (default): takes in 1st argument in script run (i.e., sys.argv[1])
-gmail_filters = YamlWrapper(debug=True).gmail_filters
+gmail_filters = YamlWrapper(debug=False).gmail_filters
 # Load tools & API services
 filter_tools = GMailFilter()
 xml_tools = XMLBuilder(gmail_filters)
