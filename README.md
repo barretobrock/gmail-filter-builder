@@ -56,7 +56,8 @@ python3 gfb_xml_method.py ~/path/to/my/yaml_file.yaml
  6. Click `Open file`, make sure the check selections are appropriate before proceeding
  7. Optionally check the `Apply new filters to existing email` box and then click `Create filters` 
 
-## Example YAML Structure
+## Example YAML Structures
+### The Compact
 ```yaml
 MyLabel/Sublabel:
     data:
@@ -71,6 +72,32 @@ MyLabel/Sublabel:
     actions: [archive, never-important]
     # Archives (remove from inbox, but don't delete) & never marks important
 ```
+### The Lengthy
+_NOTE: This structure will be used when calling `gfb_clean_yaml.py`
+```yaml
+MyLabel/Sublabel:
+    actions:
+    # Archives (remove from inbox, but don't delete) & never marks important
+    - archive
+    - never-important
+    data:
+    -   or-from:
+        - "this@domain.com"
+        - "another@sites.domain.com"
+    -   join: or
+    -   section:
+        -   or-text:
+            - "this"
+            - "that"
+        -   join: and
+        -   or-text:
+            - "hello"
+            - "everyone"
+    # yields this:
+    # from:(this@domain.com OR another@sites.domain.com) OR (("this" OR "that") AND ("hello" OR "everyone"))
+    
+```
+
 ### `data` section syntax
 Filter structure
 ```

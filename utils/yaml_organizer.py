@@ -8,6 +8,7 @@ import os
 import re
 import sys
 import yaml
+from typing import List, Union
 
 
 class YamlPath:
@@ -44,7 +45,24 @@ class YamlWrapper:
 
     def _save_yaml(self):
         with open(self.new_yaml_path, 'w') as f:
-            f.write(yaml.dump(self.gmail_filters, allow_unicode=True))
+            f.write(yaml.dump(self.gmail_filters, allow_unicode=True, indent=4, default_flow_style=False))
+
+    def data_sorter(self, data: dict) -> dict:
+        """Sort the actual list of emails, terms, etc."""
+        (k, v), = data.items()
+        if k == 'section':
+            # Build a list of the different make ups of the section
+            return {k: [self.data_sorter(vv) for vv in v]}
+        elif any([x in k for x in ['from', 'to', 'bcc', 'cc']]):
+            # Working with emails. let's sort them as best we can by domain
+            #   we'll make a 'cleaned' list of just domains or fragments and sort on that
+            cleaner = re.compile(r'[^\w.@]', re.I)
+            cleaned = [re.findall(r'[\w]+', cleaner.sub('', x)) for x in v]
+            sortable = [x[-2] if len(x) > 1 else x[0] for x in cleaned]
+            # We'll then bind the two lists together and sort by the cleaned items
+            return {k: [x for _, x in sorted(zip(sortable, v))]}
+        else:
+            return {k: v}
 
     def sort_and_save(self):
         """Sorts emails listed by domain or, when lacking an obvious domain,
@@ -53,16 +71,11 @@ class YamlWrapper:
         for filter_name, fdict in self.gmail_filters.items():
             # Sort the 'data' section, leave everything else alone
             if 'data' in fdict.keys():
-                for section in fdict['data']:
-                    for k, v in section.items():
-                        if any([x in k for x in ['from', 'to', 'bcc', 'cc']]):
-                            # Working with emails. let's sort them as best we can by domain
-                            # First, we'll make a 'cleaned' list
-                            cleaner = re.compile(r'[^\w.@]', re.I)
-                            cleaned = [re.findall(r'[\w]+', cleaner.sub('', x)) for x in v]
-                            sortable = [x[-2] if len(x) > 1 else x[0] for x in cleaned]
-                            # We'll then bind the two lists together and sort by the cleaned items
-                            fdict['data'][0][k] = [x for _, x in sorted(zip(sortable, v))]
+                for i, section in enumerate(fdict['data']):
+                    fdict['data'][i] = self.data_sorter(section)
+            elif 'actions' in fdict.keys():
+                # Sort actions
+                fdict['actions'] = sorted(fdict['actions'])
             # Write back to our filters
             self.gmail_filters[filter_name] = fdict
         self._save_yaml()
