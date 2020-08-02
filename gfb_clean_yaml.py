@@ -4,6 +4,8 @@
 For cleaning & sorting entries in a YAML file
 """
 from utils.yaml_organizer import YamlWrapper
+from utils.logger import Log
+
 
 
 # Read in the YAML file

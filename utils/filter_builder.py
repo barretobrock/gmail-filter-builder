@@ -1,4 +1,3 @@
-import re
 from math import ceil
 from typing import Dict, Union, List
 from .logger import Log
@@ -282,7 +281,7 @@ class GMailFilter:
         filter_text = ''.join(filters)
         if self._is_oversized(filter_text):
             # Cut the filter text down some by splitting some sections into separate filters
-            print(f'Filter exceeded bounds: {len(filter_text)} > {self.char_limit}. Splitting.')
+            self.log.debug(f'Filter exceeded bounds: {len(filter_text)} > {self.char_limit}. Splitting.')
             # Before splitting, combine any 'AND' queries
             filters = self._combine_and(filters)
             return self._merge_filters(filters)

@@ -8,13 +8,16 @@ import os
 import re
 import sys
 import yaml
+from .logger import Log
 
 
 class YamlPath:
     DEFAULT_PATH = 'gmail_filters.yaml'
 
     def __init__(self, debug: bool = False):
+        self.log = Log('yaml-path')
         self.yaml_path = self.DEFAULT_PATH if debug else sys.argv[1]
+        self.log.debug(f'Reading YAML from {self.yaml_path}')
         self._check_path()
         # Get the directory of the file we're reading in
         self.yaml_dir = os.path.dirname(self.yaml_path)
@@ -33,6 +36,7 @@ class YamlPath:
 class YamlWrapper:
     """Wrapper class to clean YAML files"""
     def __init__(self, debug: bool = False):
+        self.log = Log('yaml-handler')
         self.yaml_obj = YamlPath(debug)
         self.new_yaml_path = os.path.join(self.yaml_obj.yaml_dir, 'cleaned_filters.yaml')
         self.gmail_filters = self._load_yaml()
@@ -43,6 +47,7 @@ class YamlWrapper:
             return yaml.load(f, Loader=yaml.FullLoader)
 
     def _save_yaml(self):
+        self.log.debug(f'Saving cleaned YAML to {self.new_yaml_path}.')
         with open(self.new_yaml_path, 'w') as f:
             f.write(yaml.dump(self.gmail_filters, allow_unicode=True, indent=4, default_flow_style=False))
 
@@ -69,6 +74,7 @@ class YamlWrapper:
 
         for filter_name, fdict in self.gmail_filters.items():
             # Sort the 'data' section, leave everything else alone
+            self.log.debug(f'Sorting data from {filter_name}...')
             if 'data' in fdict.keys():
                 for i, section in enumerate(fdict['data']):
                     fdict['data'][i] = self.data_sorter(section)

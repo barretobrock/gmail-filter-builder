@@ -2,6 +2,7 @@ import os
 import time
 from typing import List, Tuple
 from .filter_builder import GMailFilter
+from .logger import Log
 
 
 class XMLBuilder:
@@ -28,23 +29,28 @@ class XMLBuilder:
     </entry>"""
 
     def __init__(self, gmail_filter_dict: dict, output_path: str = None):
+        self.log = Log('xml-builder')
         self.gmail_filters = gmail_filter_dict
         self.filter_tools = GMailFilter(as_xml=True)
         if output_path is not None:
             self.output_path = output_path
         else:
             self.output_path = os.path.join(os.path.expanduser('~'), *['Documents', 'gmail_filters.xml'])
+        self.log.debug(f'Setting xml output path as {self.output_path}')
 
     def entry_builder(self) -> Tuple[List[int], str]:
         """Builds the actual entry for the filter"""
         xml_str = ''
         fids = []
         for filter_name, fdict in self.gmail_filters.items():
+            self.log.debug(f'Building entries for {filter_name}')
             # Build the filter
             queries = self.filter_tools.query_organizer(fdict)
+            self.log.debug(f'{len(queries)} queries generated...')
             # Assemble actions
             actions = [
-                f"<apps:property name='{x}' value='true'/>" for x in self.filter_tools.action_assembler(fdict)]
+                f"<apps:property name='{x}' value='true'/>" for x in self.filter_tools.action_assembler(fdict)
+            ]
 
             # Append some standard keys to the dictionary
             fdict.update({
@@ -82,5 +88,6 @@ class XMLBuilder:
 
     def _write_xml_to_path(self, xml: str):
         """Saves the xml file to dedicated filepath"""
+        self.log.debug('Saving to path...')
         with open(self.output_path, 'w') as f:
             f.write(xml)

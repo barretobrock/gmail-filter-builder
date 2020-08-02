@@ -4,6 +4,7 @@ from typing import List, Optional, Dict, Union, Any
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
+from .logger import Log
 
 
 class GMailAPI:
@@ -18,6 +19,7 @@ class GMailAPI:
 
     def __init__(self, google_creds_path: str = DEFAULT_GMAIL_CREDS,
                  pickle_path: str = DEFAULT_PICKLE_PATH):
+        self.log = Log('gmail-api')
         self.credentials_path = google_creds_path
         self.pickle_path = pickle_path
         self.service = None
@@ -31,6 +33,7 @@ class GMailAPI:
             time.
         """
         if os.path.exists(self.pickle_path):
+            self.log.debug('Found pickle!')
             with open(self.pickle_path, 'rb') as token:
                 return pickle.load(token)
         return None
@@ -47,6 +50,7 @@ class GMailAPI:
         creds = self._look_for_pickles()
         # If there are no (valid) credentials available, let the user log in.
         if not creds or not creds.valid:
+            self.log.debug('No pickle found... requesting authentication...')
             if creds and creds.expired and creds.refresh_token:
                 creds.refresh(Request())
             else:
@@ -59,6 +63,7 @@ class GMailAPI:
 
     def start_service(self):
         """Initiates the GMailAPI service"""
+        self.log.debug('Initiating GMail service...')
         self.service = build('gmail', 'v1', credentials=self.get_credentials())
 
 
@@ -107,7 +112,7 @@ class GMailLabelAPI(GMailAPI):
 
         resp = self.label_actions.create(userId='me', body=new_label).execute()
         if 'id' in resp.keys():
-            print(f'Successfully created label with id {resp["id"]}')
+            self.log.debug(f'Successfully created label with id {resp["id"]}')
         return resp
 
 
