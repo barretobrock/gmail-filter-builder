@@ -8,7 +8,6 @@ import os
 import re
 import sys
 import yaml
-from typing import List, Union
 
 
 class YamlPath:

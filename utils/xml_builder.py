@@ -14,7 +14,8 @@ class XMLBuilder:
         <updated>{updated}</updated>{entries}
     </feed>
     """
-    ENTRY_BASE = """<entry>
+    ENTRY_BASE = """
+    <entry>
         <category term='filter'></category>
         <title>Mail Filter</title>
         <id>tag:mail.google.com,2008:filter:{created}</id>
@@ -50,13 +51,13 @@ class XMLBuilder:
                 'label': filter_name,
                 'created': int(time.time()),
                 'updated': self._time_xml(),
-                'actions': '\n\t{}'.format('\n\t'.join(actions)) if len(actions) > 0 else ''
+                'actions': '\n\t\t{}'.format('\n\t\t'.join(actions)) if len(actions) > 0 else ''
             })
             for query in queries:
                 fids.append(int(time.time() * 10000000))
                 fdict['built_filter'] = '({})'.format(query.replace("'", "&apos;"))
                 # Build the XML for the entry
-                xml_str += '{}\n'.format(self.ENTRY_BASE.format(**fdict))
+                xml_str += '{}'.format(self.ENTRY_BASE.format(**fdict))
 
         return fids, xml_str
 
