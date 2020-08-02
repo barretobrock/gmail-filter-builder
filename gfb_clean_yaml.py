@@ -7,9 +7,11 @@ from utils.yaml_organizer import YamlWrapper
 from utils.logger import Log
 
 
-
+log = Log('filter-cleaner')
+log.debug('Initializing script')
 # Read in the YAML file
 # Debug
 #   When True: points to the example yaml file in this repo.
 #   When False (default): takes in 1st argument in script run (i.e., sys.argv[1])
 YamlWrapper(debug=False).sort_and_save()
+log.debug('Filter cleaning complete. Ending script.')
