@@ -1,5 +1,5 @@
 from math import ceil
-from typing import Dict, Union, List
+from typing import Dict, Union, List, Tuple, Optional
 from .logger import Log
 
 
@@ -111,6 +111,8 @@ class GMailFilter:
         self.as_xml = as_xml
         # Maximum (supposed) limit of characters to use in a query
         self.char_limit = 600
+        # Using the API method, we don't need to format quotes
+        self.q = '&quot;' if self.as_xml else '"'
         # Mapping of simplified joiners in gmail
         self.joiner_map = {
             'or': '|',
@@ -119,8 +121,8 @@ class GMailFilter:
         }
         self.log = Log('filter-builder')
 
-    def criteria_constructor(self, values: Union[List[str], str], key_part: str = None, join_part: str = None,
-                             not_part: str = None) -> Union[str, List[str]]:
+    def criteria_constructor(self, values: Union[List[str], str], key_part: Optional[str] = None,
+                             join_part: Optional[str] = None, not_part: Optional[str] = None) -> List[str]:
         """Handles the construction of specific criteria of the filter
         (e.g., from: to: subject, etc...)
 
@@ -133,7 +135,7 @@ class GMailFilter:
             chunk = f'{key_part}:({join_part.join(values)})'
         else:
             # Handles text area
-            chunk = '({})'.format(join_part.join(['{0}{1}{0}'.format('&quot;', x) for x in values]))
+            chunk = '({})'.format(join_part.join(['{0}{1}{0}'.format(self.q, x) for x in values]))
         if not_part is not None:
             chunk = f'-{chunk}'
 
@@ -144,17 +146,37 @@ class GMailFilter:
             for i in range(n_times):
                 st_pos = i * chunk_size
                 end_pos = st_pos + chunk_size
-                chunks.append(self.criteria_constructor(values[st_pos:end_pos], key_part, join_part, not_part))
+                chunks += self.criteria_constructor(values[st_pos:end_pos], key_part, join_part, not_part)
             return chunks
-        return chunk
+        return [chunk]
 
-    def _is_oversized(self, string: str) -> bool:
+    def _is_oversized(self, string: Union[str, List[str]]) -> bool:
         """Checks if provided string is larger than the character limit"""
+        if isinstance(string, list):
+            string = ''.join(string)
         if len(string) >= self.char_limit:
             return True
         return False
 
-    def query_constructor(self, section: Union[List[str], dict]) -> Union[str, List[str]]:
+    def _key_splitter(self, key: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+        """Takes in a key and splits it by associated parts"""
+        join_part = key_part = not_part = None
+        # Item follows the {join}-{key}[-not] syntax
+        item_split = key.split('-')
+        if len(item_split) == 3:
+            join_part, key_part, not_part = item_split
+            not_part = self.joiner_map[not_part]
+        elif len(item_split) == 2:
+            join_part, key_part = item_split
+        elif len(item_split) == 1:
+            join_part = item_split[0]
+
+        if join_part in self.joiner_map.keys():
+            join_part = self.joiner_map[join_part]
+
+        return join_part, key_part, not_part
+
+    def query_constructor(self, section: Union[List[str], dict]) -> List[str]:
         """Builds the query (i.e., assembles multiple criteria into a single query string)
         Args:
             section: list of str or dict, contains things like list of emails, text
@@ -162,27 +184,12 @@ class GMailFilter:
         """
         if isinstance(section, str):
             # Section is likely a joiner if it's just string (e.g., 'and', 'or')
-            return section
+            return [section]
         # Begin constructing the section from a dictionary
         sections = []
-        section_text = ''
         for k, v in section.items():
-            not_part = key_part = join_part = None
             # Item follows the {join}-{key}[-not] syntax
-            item_split = k.split('-')
-            if len(item_split) == 3:
-                join_part, key_part, not_part = item_split
-                not_part = self.joiner_map[not_part]
-            elif len(item_split) == 2:
-                join_part, key_part = item_split
-            elif len(item_split) == 1:
-                join_part = item_split[0]
-
-            if join_part in self.joiner_map.keys():
-                join_part = self.joiner_map[join_part]
-            else:
-                # Processing a joiner
-                join_part = section[join_part]
+            join_part, key_part, not_part = self._key_splitter(k)
 
             if isinstance(v, str) and key_part is not None:
                 # Convert str object to list. Only joins will be allowed as str
@@ -190,28 +197,13 @@ class GMailFilter:
             elif isinstance(v, list) and isinstance(v[0], dict):
                 # Probably a nested dict (i.e., using the 'section' tag
                 # We'll use a pipe so we can split this later from the other data into its own section
-                sects = []
+                sections.append('(')
                 for sect in v:
                     # Process the section
-                    proc_sect = self.query_constructor(sect)
-                    if isinstance(proc_sect, list):
-                        sects += proc_sect
-                    else:
-                        sects.append(proc_sect)
-                return ' OR ({})'.format(''.join(sects))
-
-            new_text = self.criteria_constructor(v, key_part, join_part, not_part)
-            if isinstance(new_text, list):
-                # Already been split
-                sections += new_text
-            elif self._is_oversized(section_text + new_text):
-                sections.append(section_text)
-                section_text = new_text
-            else:
-                section_text += new_text
-        if len(section_text) > 0:
-            sections.append(section_text)
-
+                    sections += self.query_constructor(sect)
+                sections.append(')')
+                return sections
+            sections += self.criteria_constructor(v, key_part, join_part, not_part)
         return sections
 
     @staticmethod
@@ -229,34 +221,79 @@ class GMailFilter:
                 cnt += 1
         return rebuilt_filters
 
-    def _merge_filters(self, filters: List[str]):
+    def _merge_filters(self, filters: List[str]) -> List[str]:
         """Combines filters up to but not exceeding the character limit"""
         rebuilt_filters = []
+
+        fstr = ''
         cnt = 0
         for i, filt in enumerate(filters):
             if cnt != i:
                 continue
-            for j in range(i + 1, len(filters)):
-                test = ''.join(filters[i:j])
-                if j == len(filters) - 1:
-                    # Reached the end
-                    test = ''.join(filters[i:])
-                    if not self._is_oversized(test):
-                        rebuilt_filters.append(test)
-                    else:
-                        rebuilt_filters += [''.join(filters[i:j]), filters[j]]
-                    return rebuilt_filters
-                elif not self._is_oversized(test):
-                    continue
+            if filt == '(':
+                # Build a section
+                # First, store what was in fstr
+                if fstr != '':
+                    rebuilt_filters.append(fstr)
+                    fstr = ''
+                lbrac_cnt = rbrac_cnt = 0
+                for j, sect in enumerate(filters[i:]):
+                    if sect == '(':
+                        lbrac_cnt += 1
+                    elif sect == ')':
+                        rbrac_cnt += 1
+                    if sect == ')' and rbrac_cnt == lbrac_cnt:
+                        break
+                section = ''.join(filters[i:i + j + 1])
+                if self._is_oversized(section):
+                    raise ValueError('A section exceeds the 600 char limit. '
+                                     'It currently cannot be saved as a single filter. Reduce it at once.')
+                rebuilt_filters.append(section)
+                cnt = i + j
+            elif filt == ' OR ':
+                if fstr == '':
+                    # Skip on new string construction
+                    pass
                 else:
-                    end_pos = j - 1
-                    final = ''.join(filters[i: end_pos])
-                    end_txt = ' OR '
-                    if final.endswith(end_txt):
-                        final = final[:-len(end_txt)]
-                    rebuilt_filters.append(final)
-                    cnt = end_pos
-                    break
+                    if filters[i + 1] == '(':
+                        # Upcoming bracket. If fstr has anything, save to rebuilt_filters and continue
+                        if fstr != '':
+                            rebuilt_filters.append(fstr)
+
+                    # Check whether the string after this wouldn't exceed the limits
+                    if self._is_oversized(fstr + filt + filters[i + 1]):
+                        # Oversized. Save fstr to the list & ignore the current string
+                        rebuilt_filters += [fstr, filters[i + 1]]
+                        # Set count to after the next item in the list
+                        fstr = ''
+                    else:
+                        # Not oversized. Add both to fstr
+                        fstr += ''.join([filt, filters[i + 1]])
+                    cnt = i + 1
+
+            else:
+                fstr += filt
+                # Test if concatenating strings exceeds limit
+                # make sure that the new string we're testing isn't just AND or OR
+                # if so, iterate to next item. Make sure it's not '('
+                # if _that's_ too big, save the first string. if not, save the new string and
+                # set cnt = the place of the last string
+
+            cnt += 1
+
+        return rebuilt_filters
+
+    @staticmethod
+    def _intersperse(qlist: List[str], divider: str) -> List[str]:
+        """Places {divider} between items in a list"""
+        is_section = qlist[0] == '('
+
+        # Populate items in list with just the divider
+        use_list = qlist[1:-1] if is_section else qlist
+        spaced = [divider] * (len(use_list) * 2 - 1)
+        # Replace every other item with the actual list items
+        spaced[0::2] = use_list
+        return ['('] + spaced + [')'] if is_section else spaced
 
     def query_organizer(self, fdict: Dict[str, Union[str, int]]) -> List[str]:
         """Handles the processing of the final query, mainly by
@@ -270,14 +307,17 @@ class GMailFilter:
         for filter_dict in fdict['data']:
             # Pass in a single dictionary of filter data (e.g., or-from: [])
             query = self.query_constructor(filter_dict)
-            if isinstance(query, str):
-                filters.append(query)
-            else:
-                # The query was already broken down into multiples
-                if not self._is_oversized(''.join(query)):
-                    filters.append(''.join(query))
-                else:
-                    filters += query
+            #   Check if combining them yields an oversized string
+            if self._is_oversized(query):
+                # These filters are too big to be combined.
+                #   Keep them on their own and intersperse with ' OR '
+                query = self._intersperse(query, ' OR ')
+            if query[0] == '(':
+                # Dealing with a section; make sure an 'OR' is
+                # thrown in before it if there are other items in front
+                if len(filters) > 0:
+                    query = [' OR '] + query
+            filters += query
         filter_text = ''.join(filters)
         if self._is_oversized(filter_text):
             # Cut the filter text down some by splitting some sections into separate filters
@@ -291,10 +331,15 @@ class GMailFilter:
     def action_assembler(self, fdict: Dict[str, Union[str, List[str]]],
                          label_id: str = None) -> Union[Dict[str, List[str]], List[str]]:
         """Processes the actions (e.g., 'never-important', 'archive', etc.)"""
-        if 'actions' not in fdict.keys():
+        if 'actions' not in fdict.keys() and label_id is None:
             return []
 
-        action_obj = Action(fdict['actions'], as_xml=self.as_xml)
+        if 'actions' in fdict.keys():
+            action_obj = Action(fdict['actions'], as_xml=self.as_xml)
+        else:
+            # For when no actions are passed;
+            #   we'll still need to create this object to pass a label
+            action_obj = Action([], as_xml=self.as_xml)
         if self.as_xml:
             return action_obj.xml_actions
         else:
