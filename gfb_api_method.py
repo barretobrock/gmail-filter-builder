@@ -31,7 +31,8 @@ all_filters = filter_svc.list_filters()
 
 # Remove all the old filters
 log.debug('Beginning filter removal process...')
-for f in all_filters:
+for i, f in enumerate(all_filters):
+    log.debug(f'Removing filter {i + 1} of {len(all_filters)}...')
     filter_svc.delete_filter(f['id'])
 
 # Create new filters
@@ -44,13 +45,15 @@ for label_name, data in gmail_filters.items():
         label = label_svc.get_label(label_name)
     else:
         # Label doesn't exist, create a new one
+        log.debug(f'Label "{label_name}" did not exist. Creating it...')
         label = label_svc.create_label(label_name)
     label_id = label['id']
     # Process the processed YAML file into a list of gmail queries and list of actions
     queries = filter_tools.query_organizer(data)
     actions = filter_tools.action_assembler(data, label_id)
     log.debug(f'Generated {len(queries)} queries...')
-    for query in queries:
+    for i, query in enumerate(queries):
+        log.debug(f'Applying query {i + 1} of {len(queries)}...')
         filter_svc.create_filter(query=query, actions_dict=actions)
 
 log.debug('Process completed. Ending script.')
