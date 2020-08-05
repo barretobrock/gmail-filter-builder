@@ -195,8 +195,13 @@ class GMailFilter:
                 # Convert str object to list. Only joins will be allowed as str
                 v = [v]
             elif isinstance(v, list) and isinstance(v[0], dict):
-                # Probably a nested dict (i.e., using the 'section' tag
+                # Probably a nested dict (i.e., using the 'section' tag)
                 # We'll use a pipe so we can split this later from the other data into its own section
+                if 'section' in k and '-' in k:
+                    # Dealing with a section; parse out the leading joiner (if any)
+                    #   and throw it in before it if there are other items in front
+                    joiner = k.split('-')[0]
+                    sections.append(f' {joiner.upper()} ')
                 sections.append('(')
                 for sect in v:
                     # Process the section
@@ -312,11 +317,6 @@ class GMailFilter:
                 # These filters are too big to be combined.
                 #   Keep them on their own and intersperse with ' OR '
                 query = self._intersperse(query, ' OR ')
-            if query[0] == '(':
-                # Dealing with a section; make sure an 'OR' is
-                # thrown in before it if there are other items in front
-                if len(filters) > 0:
-                    query = [' OR '] + query
             filters += query
         filter_text = ''.join(filters)
         if self._is_oversized(filter_text):
